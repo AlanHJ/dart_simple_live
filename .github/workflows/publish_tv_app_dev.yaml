@@ -1,68 +1,75 @@
-name: app-build-action
-#推送Tag时触发
+name: app-build-action-tv
+
+# 推送Tag时触发，或者手动触发
 on:
-    push:
-        tags:
-            - "dev_tv_v*"
+  workflow_dispatch:  # <--- 已添加：允许手动点击按钮
+  push:
+    tags:
+      - "dev_tv_v*"
+
 jobs:
-    build-tv:
-        runs-on: macos-latest
-        permissions:
-            contents: write
-        steps:
-            #签出代码
-            - uses: actions/checkout@v4
-              with:
-                  ref: dev
+  build-tv:
+    runs-on: ubuntu-latest # <--- 优化：改用 Ubuntu，编译 Android 速度更快
+    permissions:
+      contents: write
+    steps:
+      # 1. 签出代码 (已修改：删除 ref: dev，获取完整历史)
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
 
-            #APK签名设置
-            - name: Download Android keystore
-              id: android_tv_keystore
-              uses: timheuer/base64-to-file@v1.2
-              with:
-                  fileName: keystore.jks
-                  encodedString: ${{ secrets.TV_KEYSTORE_BASE64 }}
-            - name: Create key.properties
-              run: |
-                  echo "storeFile=${{ steps.android_tv_keystore.outputs.filePath }}" > simple_live_tv_app/android/key.properties
-                  echo "storePassword=${{ secrets.TV_STORE_PASSWORD }}" >> simple_live_tv_app/android/key.properties
-                  echo "keyPassword=${{ secrets.TV_KEY_PASSWORD }}" >> simple_live_tv_app/android/key.properties
-                  echo "keyAlias=${{ secrets.TV_KEY_ALIAS }}" >> simple_live_tv_app/android/key.properties
+      # 2. APK签名设置
+      # 注意：这里我把你原有的 secrets.TV_XXX 改成了 secrets.XXX
+      # 这样它就会直接读取你刚才设置好的密码，不用再重新设置一遍了。
+      - name: Download Android keystore
+        id: android_tv_keystore
+        uses: timheuer/base64-to-file@v1.2
+        with:
+          fileName: keystore.jks
+          encodedString: ${{ secrets.KEYSTORE_BASE64 }} # <--- 改为复用现有密钥
 
-            # 设置JAVA环境
-            - uses: actions/setup-java@v4
-              with:
-                  distribution: "zulu"
-                  java-version: "17"
-                  cache: "gradle"
+      - name: Create key.properties
+        run: |
+          echo "storeFile=${{ steps.android_tv_keystore.outputs.filePath }}" > simple_live_tv_app/android/key.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> simple_live_tv_app/android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> simple_live_tv_app/android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> simple_live_tv_app/android/key.properties
 
-            #设置Flutter
-            - name: Flutter action
-              uses: subosito/flutter-action@v2
-              with:
-                  flutter-version: "3.38.x"
-                  cache: true
+      # 3. 设置JAVA环境
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
 
-            #更新Flutter的packages
-            - name: Restore packages
-              run: |
-                  cd simple_live_tv_app
-                  flutter pub get
+      # 4. 设置Flutter
+      - name: Flutter action
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.x"
+          cache: true
 
-            #打包APK
-            - name: Build APK
-              run: |
-                  cd simple_live_tv_app
-                  flutter build apk --release --split-per-abi
+      # 5. 更新Flutter的packages
+      - name: Restore packages
+        run: |
+          cd simple_live_tv_app
+          flutter pub get
 
-            #上传APK至Artifacts
-            - name: Upload APK to Artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: android_tv
-                  path: |
-                      simple_live_tv_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-                      simple_live_tv_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-                      simple_live_tv_app/build/app/outputs/flutter-apk/app-x86_64-release.apk
-            #完成
-            - run: echo "🍏 This job's status is ${{ job.status }}."
+      # 6. 打包APK (Release 正式版)
+      - name: Build APK
+        run: |
+          cd simple_live_tv_app
+          flutter build apk --release --split-per-abi
+
+      # 7. 上传APK至Artifacts
+      - name: Upload APK to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android_tv
+          path: |
+            simple_live_tv_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+            simple_live_tv_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+            simple_live_tv_app/build/app/outputs/flutter-apk/app-x86_64-release.apk
+      # 完成
+      - run: echo "📺 TV App build finished!"
