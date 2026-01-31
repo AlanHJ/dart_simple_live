@@ -15,14 +15,12 @@ jobs:
       contents: write
 
     steps:
-      # 签出代码 (已修改：获取完整历史以修复版本号计算错误)
+      # 签出代码
+      # 修改说明：已删除 ref: dev，保留获取完整历史以修复版本号计算
       - uses: actions/checkout@v4
         with:
-          ref: dev
           fetch-depth: 0
           fetch-tags: true
-
-      # --- [已删除：APK签名设置] 防止因缺少Secrets报错 ---
 
       # 设置JAVA环境
       - uses: actions/setup-java@v4
@@ -119,10 +117,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      # 签出代码 (已修改：获取完整历史)
+      # 签出代码
+      # 修改说明：已删除 ref: dev，保留获取完整历史
       - uses: actions/checkout@v4
         with:
-          ref: dev
           fetch-depth: 0
           fetch-tags: true
       # 设置Flutter环境
@@ -170,10 +168,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      # 签出代码 (已修改：获取完整历史)
+      # 签出代码
+      # 修改说明：已删除 ref: dev，保留获取完整历史
       - uses: actions/checkout@v4
         with:
-          ref: dev
           fetch-depth: 0
           fetch-tags: true
       # 设置Flutter环境
